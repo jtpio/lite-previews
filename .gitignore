@@ -1,0 +1,9 @@
+# used for local testing
+jupyterlab
+jupyterlite
+notebook
+
+
+# pixi environments
+.pixi
+*.egg-info
