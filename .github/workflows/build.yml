@@ -30,6 +30,8 @@ jobs:
           node-version: '18.x'
 
       - name: Clone JupyterLab
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh repo clone jupyterlab/jupyterlab
           if [ -n "${{ github.event.inputs.jupyterlab_pr }}" ]; then
@@ -39,6 +41,8 @@ jobs:
           fi
 
       - name: Clone Notebook
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh repo clone jupyter/notebook
           if [ -n "${{ github.event.inputs.notebook_pr }}" ]; then
@@ -60,14 +64,31 @@ jobs:
 
       - name: Create JupyterLite site
         run: |
+          python -m pip install --no-deps jupyterlite-pyodide-kernel jupyterlite-javascript-kernel
           python -m pip install jupyterlite/py/jupyterlite-core/dist/*.whl
           mkdir site
           cd site
-          jupyter lite init
-          jupyter lite build
+          jupyter lite build --output-dir _output
 
       - name: Upload site artifact
         uses: actions/upload-artifact@v3
         with:
           name: jupyterlite-site
           path: site/_output
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Upload to Vercel
+        id: deploy
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          DEPLOY_URL=$(vercel deploy --archive=split-tgz --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Get Vercel URL
+        run: |
+          echo "### Latest Vercel Deployment URL" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Deployment](${{ steps.deploy.outputs.url }})" >> $GITHUB_STEP_SUMMARY
